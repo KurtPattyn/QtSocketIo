@@ -1,30 +1,30 @@
-#include "socketioclient.h"
-#include "websocket.h"
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QString>
-#include <QStringList>
-#include <QDateTime>
-#include <QTimer>
-#include <QRegExp>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QDebug>
+#include "qsocketioclient.h"
+#include <QtWebSockets/QWebSocket>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtCore/QString>
+#include <QtCore/QStringList>
+#include <QtCore/QDateTime>
+#include <QtCore/QTimer>
+#include <QtCore/QRegExp>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
+#include <QtCore/QDebug>
 #include <functional>
 
-SocketIOClient::SocketIOClient(QObject *parent) :
+QSocketIOClient::QSocketIOClient(QObject *parent) :
     QObject(parent),
-    m_pWebSocket(0),
-    m_pNetworkAccessManager(0),
+    m_pWebSocket(Q_NULLPTR),
+    m_pNetworkAccessManager(Q_NILLPTR),
     m_requestUrl(),
     m_mustMask(true),
     m_connectionTimeout(30000),
     m_heartBeatTimeout(20000),
-    m_pHeartBeatTimer(0),
+    m_pHeartBeatTimer(Q_NULLPTR),
     m_sessionId()
 {
-    m_pWebSocket = new WebSocket(WebSocketProtocol::V_LATEST, this);
+    m_pWebSocket = new QWebSocket(QString(), QWebSocketProtocol::V_LATEST, this);
     m_pNetworkAccessManager = new QNetworkAccessManager(this);
     m_pHeartBeatTimer = new QTimer(this);
     m_pHeartBeatTimer->setInterval(m_heartBeatTimeout);
@@ -46,7 +46,7 @@ SocketIOClient::SocketIOClient(QObject *parent) :
     connect(this, SIGNAL(heartbeatReceived()), this, SLOT(onHeartbeatReceived()));
 }
 
-bool SocketIOClient::open(const QUrl &url, bool masking)
+bool QSocketIOClient::open(const QUrl &url, bool masking)
 {
     m_requestUrl = url;
     m_mustMask = masking;
@@ -59,51 +59,50 @@ bool SocketIOClient::open(const QUrl &url, bool masking)
     return true;
 }
 
-void SocketIOClient::onConnected()
+void QSocketIOClient::onConnected()
 {
     qDebug() << "WebSocket connected";
 }
 
-void SocketIOClient::onDisconnected()
+void QSocketIOClient::onDisconnected()
 {
     qDebug() << "Socket disconnected";
 }
 
-void SocketIOClient::onError(QAbstractSocket::SocketError error)
+void QSocketIOClient::onError(QAbstractSocket::SocketError error)
 {
     qDebug() << "Error occurred: " << error;
 }
 
-void SocketIOClient::onTextMessage(QString textMessage)
+void QSocketIOClient::onTextMessage(QString textMessage)
 {
     Q_UNUSED(textMessage);
     parseMessage(textMessage);
 }
 
-void SocketIOClient::onBinaryMessage(QByteArray binaryMessage, bool isLastFrame)
+void QSocketIOClient::onBinaryMessage(QByteArray binaryMessage)
 {
     Q_UNUSED(binaryMessage);
-    Q_UNUSED(isLastFrame);
     qDebug() << "Binary message received";
 }
 
-void SocketIOClient::sendHeartBeat()
+void QSocketIOClient::sendHeartBeat()
 {
     qDebug() << "Sending heartbeat";
-    m_pWebSocket->send("2::");
+    m_pWebSocket->write("2::");
 }
 
-void SocketIOClient::replyFinished(QNetworkReply *reply)
+void QSocketIOClient::replyFinished(QNetworkReply *reply)
 {
     int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    QString statusReason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+    //QString statusReason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
     //qDebug() << "Reply finished: " << status << statusReason;
     switch (status)
     {
         case 200:
         {
             //everything allright
-            QString payload = reply->readAll();
+            QString payload = QString::fromUtf8(reply->readAll());
             QStringList handshakeReturn = payload.split(":");
             if (handshakeReturn.length() != 4)
             {
@@ -161,18 +160,18 @@ void SocketIOClient::replyFinished(QNetworkReply *reply)
     }
 }
 
-void SocketIOClient::onHandshakeSucceeded()
+void QSocketIOClient::onHandshakeSucceeded()
 {
-    QUrl url(m_requestUrl.toString().append("/socket.io/1/websocket/").append(m_sessionId));
+    QUrl url(m_requestUrl.toString()+ QStringLiteral("/socket.io/1/websocket/") + m_sessionId);
     m_pWebSocket->open(url, m_mustMask);
 }
 
-void SocketIOClient::onHeartbeatReceived()
+void QSocketIOClient::onHeartbeatReceived()
 {
     qDebug() << "heartbeat received";
 }
 
-void SocketIOClient::parseMessage(QString message)
+void QSocketIOClient::parseMessage(const QString &message)
 {
     //qDebug() << "SocketIOClient::parseMessage" << message;
     QRegExp regExp("^([^:]+):([0-9]+)?(\\+)?:([^:]+)?:?([\\s\\S]*)?$", Qt::CaseInsensitive, QRegExp::RegExp2);
@@ -330,28 +329,33 @@ void SocketIOClient::parseMessage(QString message)
     }
 }
 
-void SocketIOClient::emitMessage(QString message, const QVariantList &arguments)
+void QSocketIOClient::emitMessage(const QString &message, const QVariantList &arguments)
 {
-    QString m_endPoint;
-    QJsonArray ja = QJsonArray::fromVariantList(arguments);
-    QJsonDocument doc(ja);
-    QString msg = "5::" + m_endPoint + ":{\"name\":\"" + message + "\",\"args\":" + doc.toJson() + "}";
-    m_pWebSocket->send(msg);
+    const QString m_endPoint;
+    const QJsonArray ja = QJsonArray::fromVariantList(arguments);
+    const QJsonDocument doc(ja);
+    const QString msg = QStringLiteral("5::") + m_endPoint + QStringLiteral(":{\"name\":\"") + message + QStringLiteral("\",\"args\":") + doc.toJson() + QStringLiteral("}");
+    m_pWebSocket->write(msg);
 }
 
-QString SocketIOClient::getSessionId() const
+void QSocketIOClient::emitMessage(const char *message, const QVariantList &arguments)
+{
+    emitMessage(QString::fromLatin1(message), arguments);
+}
+
+QString QSocketIOClient::sessionId() const
 {
     return m_sessionId;
 }
 
-void SocketIOClient::acknowledge(int messageId, const QVariantList &arguments)
+void QSocketIOClient::acknowledge(int messageId, const QVariantList &arguments)
 {
-    QString msg = QString("6:::").append(QString::number(messageId));
+    QString msg = QStringLiteral("6:::") + QString::number(messageId);
     if (!arguments.isEmpty())
     {
-        QJsonArray ja = QJsonArray::fromVariantList(arguments);
-        QJsonDocument doc(ja);
-        msg.append("+").append(doc.toJson());
+        const QJsonArray ja = QJsonArray::fromVariantList(arguments);
+        const QJsonDocument doc(ja);
+        msg.append(QStringLiteral("+") + doc.toJson());
     }
-    m_pWebSocket->send(msg);
+    m_pWebSocket->write(msg);
 }

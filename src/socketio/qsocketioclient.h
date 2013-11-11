@@ -1,26 +1,29 @@
-#ifndef WEBSOCKETCLIENT_H
-#define WEBSOCKETCLIENT_H
+#ifndef QSOCKETIOCLIENT_H
+#define QSOCKETIOCLIENT_H
 
-#include <QObject>
-#include <QUrl>
-#include <QStringList>
-#include <QJsonArray>
-#include "websocket.h"
+#include <QtCore/QObject>
+#include <QtCore/QUrl>
+#include <QtCore/QStringList>
+#include <QtCore/QJsonArray>
+#include "QtWebSockets/QWebSocket"
+
+QT_BEGIN_NAMESPACE
 
 class QNetworkAccessManager;
 class QNetworkReply;
 class QTimer;
 
-class SocketIOClient : public QObject
+class QSocketIOClient : public QObject
 {
     Q_OBJECT
 public:
-    explicit SocketIOClient(QObject *parent = 0);
+    explicit QSocketIOClient(QObject *parent = Q_NULLPTR);
 
     bool open(const QUrl &url, bool masking = true);
-    void emitMessage(QString message, const QVariantList &arguments);
+    void emitMessage(const QString &message, const QVariantList &arguments);
+    void emitMessage(const char *message, const QVariantList &arguments);
 
-    QString getSessionId() const;
+    QString sessionId() const;
 
 Q_SIGNALS:
     //socket.io signals
@@ -57,7 +60,7 @@ private Q_SLOTS:
     void onHeartbeatReceived();
 
 private:
-    WebSocket *m_pWebSocket;
+    QWebSocket *m_pWebSocket;
     QNetworkAccessManager *m_pNetworkAccessManager;
     QUrl m_requestUrl;
     bool m_mustMask;
@@ -66,9 +69,11 @@ private:
     QTimer *m_pHeartBeatTimer;
     QString m_sessionId;
 
-    void parseMessage(QString message);
+    void parseMessage(const QString &message);
 
     void acknowledge(int messageId, const QVariantList &arguments = QVariantList());
 };
 
-#endif // WEBSOCKETCLIENT_H
+QT_END_NAMESPACE
+
+#endif // QSOCKETIOCLIENT_H

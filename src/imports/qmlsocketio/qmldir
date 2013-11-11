@@ -1,0 +1,3 @@
+module Qt.SocketIo
+
+plugin declarative_qmlsocketio
