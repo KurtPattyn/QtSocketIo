@@ -6,7 +6,7 @@ QT = core network websockets
 
 TEMPLATE = lib
 
-DEFINES += QTSOCKETIO_LIBRARY
+DEFINES += QTSOCKETIO_LIBRARY QT_USE_STRINGBUILDER
 
 #QMAKE_DOCS = $$PWD/doc/qtsocketio.qdocconfig
 #OTHER_FILES += doc/src/*.qdoc   # show .qdoc files in Qt Creator

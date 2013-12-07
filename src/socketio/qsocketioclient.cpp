@@ -16,7 +16,7 @@
 QSocketIOClient::QSocketIOClient(QObject *parent) :
     QObject(parent),
     m_pWebSocket(Q_NULLPTR),
-    m_pNetworkAccessManager(Q_NILLPTR),
+    m_pNetworkAccessManager(Q_NULLPTR),
     m_requestUrl(),
     m_mustMask(true),
     m_connectionTimeout(30000),
@@ -39,10 +39,8 @@ QSocketIOClient::QSocketIOClient(QObject *parent) :
 
     connect(m_pHeartBeatTimer, SIGNAL(timeout()), this, SLOT(sendHeartBeat()));
 
-    //socket.io connections
     connect(this, SIGNAL(handshakeSucceeded()), this, SLOT(onHandshakeSucceeded()));
 
-    //socket.io test connections
     connect(this, SIGNAL(heartbeatReceived()), this, SLOT(onHeartbeatReceived()));
 }
 
@@ -50,11 +48,14 @@ bool QSocketIOClient::open(const QUrl &url, bool masking)
 {
     m_requestUrl = url;
     m_mustMask = masking;
-    QUrl requestUrl("http://" + url.host() + ":" + QString::number(url.port(80)) + "/socket.io/1/?t=" + QString::number(QDateTime::currentMSecsSinceEpoch()));
+    QUrl requestUrl(QStringLiteral("http://%1:%2/socket.io/1/?t=%3")
+                    .arg(url.host())
+                    .arg(QString::number(url.port(80)))
+                    .arg(QString::number(QDateTime::currentMSecsSinceEpoch())));
     QNetworkRequest request(requestUrl);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "text/html");
-    request.setRawHeader("Accept", "*/*");
-    request.setRawHeader("Connection", "close");
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/html"));
+    request.setRawHeader(QByteArrayLiteral("Accept"), QByteArrayLiteral("*/*"));
+    request.setRawHeader(QByteArrayLiteral("Connection"), QByteArrayLiteral("close"));
     m_pNetworkAccessManager->post(request, QByteArray());
     return true;
 }
@@ -162,7 +163,7 @@ void QSocketIOClient::replyFinished(QNetworkReply *reply)
 
 void QSocketIOClient::onHandshakeSucceeded()
 {
-    QUrl url(m_requestUrl.toString()+ QStringLiteral("/socket.io/1/websocket/") + m_sessionId);
+    QUrl url(m_requestUrl.toString() + QStringLiteral("/socket.io/1/websocket/") + m_sessionId);
     m_pWebSocket->open(url, m_mustMask);
 }
 
@@ -173,21 +174,16 @@ void QSocketIOClient::onHeartbeatReceived()
 
 void QSocketIOClient::parseMessage(const QString &message)
 {
-    //qDebug() << "SocketIOClient::parseMessage" << message;
     QRegExp regExp("^([^:]+):([0-9]+)?(\\+)?:([^:]+)?:?([\\s\\S]*)?$", Qt::CaseInsensitive, QRegExp::RegExp2);
     if (regExp.indexIn(message) != -1)
     {
         QStringList captured = regExp.capturedTexts();
-        //qDebug() << "Found:" << regExp.capturedTexts();
         int messageType = captured.at(1).toInt();
         int messageId = captured.at(2).toInt();
         bool mustAck = (messageId != 0);
         bool autoAck = mustAck && captured.at(3).isEmpty();
         QString endpoint = captured.at(4);
         QString data = captured.at(5);
-        /*qDebug() << "MessageType:" << messageType << "MessageId:" << messageId <<
-                    "autoAck:" << autoAck << "mustAck:" << mustAck << "endpoint:" << endpoint <<
-                    "data:" << data;*/
 
         if (autoAck)
         {
@@ -225,7 +221,6 @@ void QSocketIOClient::parseMessage(const QString &message)
             case 5: //event
             {
                 QJsonParseError parseError;
-                //qDebug() << "Event received:" << data;
                 QJsonDocument document = QJsonDocument::fromJson(QByteArray(data.toLatin1()), &parseError);
                 if (parseError.error != QJsonParseError::NoError)
                 {
@@ -247,18 +242,11 @@ void QSocketIOClient::parseMessage(const QString &message)
                             {
                                 if (argsValue.isArray())
                                 {
-                                    //QJsonArray argsArray = argsValue.toArray();
-                                    //arguments = argsArray.toVariantList();
                                     arguments = argsValue.toArray();
-                                    //qDebug() << "Received arguments" << argsValue;
-                                    /*Q_FOREACH(QJsonValue val, argsArray)
-                                    {
-                                        arguments << val.toVariant();
-                                    }*/
                                 }
                                 else
                                 {
-                                    qDebug() << "Args argument is not an array";
+                                    qWarning() << "Args argument is not an array";
                                     return;
                                 }
                             }
@@ -266,7 +254,7 @@ void QSocketIOClient::parseMessage(const QString &message)
                         }
                         else
                         {
-                            qDebug() << "Invalid event received: no name";
+                            qWarning() << "Invalid event received: no name";
                         }
                     }
                 }
@@ -287,19 +275,18 @@ void QSocketIOClient::parseMessage(const QString &message)
                         QJsonDocument doc = QJsonDocument::fromJson(argumentsValue.toLatin1(), &parseError);
                         if (parseError.error != QJsonParseError::NoError)
                         {
-                            qDebug() << "JSONParseError:" << parseError.errorString();
+                            qWarning() << "JSONParseError:" << parseError.errorString();
                             return;
                         }
                         else
                         {
                             if (doc.isArray())
                             {
-                                //arguments = doc.array().toVariantList();
                                 arguments = doc.array();
                             }
                             else
                             {
-                                qDebug() << "Error: data of event is not an array";
+                                qWarning() << "Error: data of event is not an array";
                                 return;
                             }
                         }
@@ -334,7 +321,10 @@ void QSocketIOClient::emitMessage(const QString &message, const QVariantList &ar
     const QString m_endPoint;
     const QJsonArray ja = QJsonArray::fromVariantList(arguments);
     const QJsonDocument doc(ja);
-    const QString msg = QStringLiteral("5::") + m_endPoint + QStringLiteral(":{\"name\":\"") + message + QStringLiteral("\",\"args\":") + doc.toJson() + QStringLiteral("}");
+    const QString msg = QStringLiteral("5::%1:{\"name\":\"%2\",\"args\":%3}")
+            .arg(m_endPoint)
+            .arg(message)
+            .arg(QString::fromUtf8(doc.toJson()));
     m_pWebSocket->write(msg);
 }
 
@@ -355,7 +345,7 @@ void QSocketIOClient::acknowledge(int messageId, const QVariantList &arguments)
     {
         const QJsonArray ja = QJsonArray::fromVariantList(arguments);
         const QJsonDocument doc(ja);
-        msg.append(QStringLiteral("+") + doc.toJson());
+        msg.append(QStringLiteral("+") + QString::fromUtf8(doc.toJson()));
     }
     m_pWebSocket->write(msg);
 }

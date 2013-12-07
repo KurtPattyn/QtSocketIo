@@ -26,7 +26,6 @@ public:
     QString sessionId() const;
 
 Q_SIGNALS:
-    //socket.io signals
     void eventReceived(QString message, QJsonArray arguments);
     void messageReceived(QString message);
     void errorReceived(QString reason, QString advice);
@@ -35,14 +34,12 @@ Q_SIGNALS:
     void disconnected(QString endpoint);
     void heartbeatReceived();
 
-    //socket.io handshake
     //TODO: remove? otherwise it is available to outside clients; do we want this?
     void handshakeSucceeded();
 
 public Q_SLOTS:
 
 private Q_SLOTS:
-    //WebSocket events
     void onConnected();
     void onDisconnected();
     void onError(QAbstractSocket::SocketError error);
@@ -53,10 +50,8 @@ private Q_SLOTS:
 
     void replyFinished(QNetworkReply *reply);
 
-    //socket.io callbacks
     void onHandshakeSucceeded();
 
-    //socket.io test callbacks
     void onHeartbeatReceived();
 
 private:
