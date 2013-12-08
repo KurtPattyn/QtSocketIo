@@ -1,0 +1,17 @@
+{
+	"name": "qtsocketio-echoserver",
+	"preferGlobal": false,
+	"version": "0.0.1",
+	"author": "Kurt Pattyn <pattyn.kurt@gmail.com>",
+	"description": "QtSocketIo Example Server",
+	"scripts": {
+		"start": "node ./echoserver.js"
+	},
+	"dependencies": {
+		"socket.io": ">=0.9"
+	},
+	"license": "LGPLv2",
+	"engines": {
+		"node": ">=0.8"
+	}
+}

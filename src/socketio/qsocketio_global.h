@@ -39,22 +39,22 @@
 **
 ****************************************************************************/
 
-#ifndef QWEBSOCKETSGLOBAL_H
-#define QWEBSOCKETSGLOBAL_H
+#ifndef QSOCKETIOGLOBAL_H
+#define QSOCKETIOGLOBAL_H
 
 #include <QtCore/qglobal.h>
 
 QT_BEGIN_NAMESPACE
 
 #ifndef QT_STATIC
-#  if defined(QT_BUILD_WEBSOCKETS_LIB)
-#    define Q_WEBSOCKETS_EXPORT Q_DECL_EXPORT
+#  if defined(QT_BUILD_SOCKETIO_LIB)
+#    define Q_SOCKETIO_EXPORT Q_DECL_EXPORT
 #  else
-#    define Q_WEBSOCKETS_EXPORT Q_DECL_IMPORT
+#    define Q_SOCKETIO_EXPORT Q_DECL_IMPORT
 #  endif
 #else
-#  define Q_WEBSOCKETS_EXPORT
+#  define Q_SOCKETIO_EXPORT
 #endif
 
 QT_END_NAMESPACE
-#endif // QWEBSOCKETSGLOBAL_H
+#endif // QSOCKETIOGLOBAL_H

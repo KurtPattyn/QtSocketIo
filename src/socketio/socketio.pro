@@ -14,7 +14,8 @@ DEFINES += QTSOCKETIO_LIBRARY QT_USE_STRINGBUILDER
 
 PUBLIC_HEADERS += \
     $$PWD/qsocketio_global.h \
-    $$PWD/qsocketioclient.h
+    $$PWD/qsocketioclient.h \
+    $$PWD/qcallback.h
 
 PRIVATE_HEADERS +=
 
