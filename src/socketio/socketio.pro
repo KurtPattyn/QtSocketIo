@@ -3,6 +3,7 @@ load(qt_build_config)
 TARGET = QtSocketIo
 
 QT = core network websockets
+CONFIG += c++11
 
 TEMPLATE = lib
 

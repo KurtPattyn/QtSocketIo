@@ -15,20 +15,23 @@
 
 QSocketIoClient::QSocketIoClient(QObject *parent) :
     QObject(parent),
-    m_pWebSocket(new QWebSocket(QString(), QWebSocketProtocol::V_LATEST, this)),
-    m_pNetworkAccessManager(new QNetworkAccessManager(this)),
+    m_pWebSocket(new QWebSocket()),
+    m_pNetworkAccessManager(new QNetworkAccessManager()),
     m_requestUrl(),
     m_connectionTimeout(30000),
     m_heartBeatTimeout(20000),
-    m_pHeartBeatTimer(new QTimer(this)),
+    m_pHeartBeatTimer(new QTimer()),
     m_sessionId()
 {
     m_pHeartBeatTimer->setInterval(m_heartBeatTimeout);
 
-    connect(m_pWebSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
-    connect(m_pWebSocket, SIGNAL(textMessageReceived(QString)), this, SLOT(onMessage(QString)));
+    connect(m_pWebSocket, SIGNAL(error(QAbstractSocket::SocketError)),
+            this, SLOT(onError(QAbstractSocket::SocketError)));
+    connect(m_pWebSocket, SIGNAL(textMessageReceived(QString)),
+            this, SLOT(onMessage(QString)));
 
-    connect(m_pNetworkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
+    connect(m_pNetworkAccessManager, SIGNAL(finished(QNetworkReply*)),
+            this, SLOT(replyFinished(QNetworkReply*)));
 
     connect(m_pHeartBeatTimer, SIGNAL(timeout()), this, SLOT(sendHeartBeat()));
 }
@@ -69,7 +72,7 @@ void QSocketIoClient::onMessage(QString textMessage)
 
 void QSocketIoClient::sendHeartBeat()
 {
-    m_pWebSocket->write("2::");
+    (void)m_pWebSocket->sendTextMessage(QStringLiteral("2::"));
 }
 
 void QSocketIoClient::replyFinished(QNetworkReply *reply)
@@ -109,7 +112,8 @@ void QSocketIoClient::replyFinished(QNetworkReply *reply)
 
         case 401:	//unauthorized
         {
-            //the server refuses to authorize the client to connect, based on the supplied information (eg: Cookie header or custom query components).
+            //the server refuses to authorize the client to connect,
+            //based on the supplied information (eg: Cookie header or custom query components).
             qDebug() << "Error:" << reply->readAll();
             break;
         }
@@ -155,7 +159,8 @@ void QSocketIoClient::ackReceived(int messageId, QJsonArray arguments)
 
 #include <functional>
 
-void QSocketIoClient::eventReceived(QString message, QJsonArray arguments, bool mustAck, int messageId)
+void QSocketIoClient::eventReceived(QString message, QJsonArray arguments,
+                                    bool mustAck, int messageId)
 {
     if (m_subscriptions.contains(message)) {
         QJsonValue retVal;
@@ -173,7 +178,8 @@ void QSocketIoClient::eventReceived(QString message, QJsonArray arguments, bool 
 
 void QSocketIoClient::parseMessage(const QString &message)
 {
-    QRegExp regExp("^([^:]+):([0-9]+)?(\\+)?:([^:]+)?:?([\\s\\S]*)?$", Qt::CaseInsensitive, QRegExp::RegExp2);
+    QRegExp regExp("^([^:]+):([0-9]+)?(\\+)?:([^:]+)?:?([\\s\\S]*)?$", Qt::CaseInsensitive,
+                   QRegExp::RegExp2);
     if (regExp.indexIn(message) != -1)
     {
         QStringList captured = regExp.capturedTexts();
@@ -220,7 +226,8 @@ void QSocketIoClient::parseMessage(const QString &message)
             case 5: //event
             {
                 QJsonParseError parseError;
-                QJsonDocument document = QJsonDocument::fromJson(QByteArray(data.toLatin1()), &parseError);
+                QJsonDocument document = QJsonDocument::fromJson(QByteArray(data.toLatin1()),
+                                                                 &parseError);
                 if (parseError.error != QJsonParseError::NoError)
                 {
                     qDebug() << parseError.errorString();
@@ -269,7 +276,8 @@ void QSocketIoClient::parseMessage(const QString &message)
                     QString argumentsValue = regExp.cap(3);
                     if (!argumentsValue.isEmpty())
                     {
-                        QJsonDocument doc = QJsonDocument::fromJson(argumentsValue.toLatin1(), &parseError);
+                        QJsonDocument doc = QJsonDocument::fromJson(argumentsValue.toLatin1(),
+                                                                    &parseError);
                         if (parseError.error != QJsonParseError::NoError)
                         {
                             qWarning() << "JSONParseError:" << parseError.errorString();
@@ -383,7 +391,7 @@ void QSocketIoClient::acknowledge(int messageId, const QJsonValue &retVal)
         }
         msg.append(QStringLiteral("+") + QString::fromUtf8(doc.toJson(QJsonDocument::Compact)));
     }
-    m_pWebSocket->write(msg);
+    (void)m_pWebSocket->sendTextMessage(msg);
 }
 
 int QSocketIoClient::doEmitMessage(const QString &message, const QJsonDocument &document,
@@ -396,6 +404,6 @@ int QSocketIoClient::doEmitMessage(const QString &message, const QJsonDocument &
             .arg(endpoint)
             .arg(message)
             .arg(QString::fromUtf8(document.toJson(QJsonDocument::Compact)));
-    m_pWebSocket->write(msg);
+    (void)m_pWebSocket->sendTextMessage(msg);
     return id;
 }
