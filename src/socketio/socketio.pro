@@ -1,5 +1,7 @@
 load(qt_build_config)
 
+CMAKE_MODULE_TESTS = '-'
+
 TARGET = QtSocketIo
 
 QT = core network websockets
